@@ -1,0 +1,25 @@
+# Configuración de conexiones del proceso ETL
+# Las credenciales se resuelven desde variables de entorno o desde el archivo local .env
+
+OLTP_SOURCE:
+  drivername: mssql+pyodbc
+  host: ${OLTP_HOST:-127.0.0.1}
+  port: ${OLTP_PORT:-1433}
+  dbname: ${OLTP_DBNAME:-AdventureWorks2025}
+  user: ${OLTP_USER:-sa}
+  password: ${OLTP_PASSWORD}
+  driver: ODBC Driver 18 for SQL Server
+  trust_server_certificate: "yes"
+
+DW_TARGET:
+  drivername: postgresql+psycopg2
+  host: ${DW_HOST:-localhost}
+  port: ${DW_PORT:-5432}
+  dbname: ${DW_DBNAME:-adventureworks_dw}
+  user: ${DW_USER:-postgres}
+  password: ${DW_PASSWORD}
+
+ETL_OPTIONS:
+  # Si es True, recrea el esquema y recarga dimensiones y hechos de forma idempotente (full refresh)
+  full_refresh: true
+  chunk_size: 5000

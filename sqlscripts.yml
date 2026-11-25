@@ -1,0 +1,305 @@
+# Scripts DDL para PostgreSQL - Datamarts Internet Sales y Reseller Sales
+# Ordenados respetando dependencias de llaves foráneas
+
+drop_all: |
+  DROP TABLE IF EXISTS fact_internet_sales_reason CASCADE;
+  DROP TABLE IF EXISTS fact_internet_sales CASCADE;
+  DROP TABLE IF EXISTS fact_reseller_sales CASCADE;
+  DROP TABLE IF EXISTS dim_sales_reason CASCADE;
+  DROP TABLE IF EXISTS dim_employee CASCADE;
+  DROP TABLE IF EXISTS dim_reseller CASCADE;
+  DROP TABLE IF EXISTS dim_customer CASCADE;
+  DROP TABLE IF EXISTS dim_promotion CASCADE;
+  DROP TABLE IF EXISTS dim_product CASCADE;
+  DROP TABLE IF EXISTS dim_product_subcategory CASCADE;
+  DROP TABLE IF EXISTS dim_product_category CASCADE;
+  DROP TABLE IF EXISTS dim_geography CASCADE;
+  DROP TABLE IF EXISTS dim_sales_territory CASCADE;
+  DROP TABLE IF EXISTS dim_currency CASCADE;
+  DROP TABLE IF EXISTS dim_date CASCADE;
+
+dim_date: |
+  CREATE TABLE dim_date (
+      date_key INTEGER PRIMARY KEY,
+      full_date_alternate_key DATE NOT NULL UNIQUE,
+      day_number_of_week SMALLINT NOT NULL,
+      english_day_name_of_week VARCHAR(15) NOT NULL,
+      spanish_day_name_of_week VARCHAR(15) NOT NULL,
+      day_number_of_month SMALLINT NOT NULL,
+      day_number_of_year SMALLINT NOT NULL,
+      week_number_of_year SMALLINT NOT NULL,
+      english_month_name VARCHAR(15) NOT NULL,
+      spanish_month_name VARCHAR(15) NOT NULL,
+      month_number_of_year SMALLINT NOT NULL,
+      calendar_quarter SMALLINT NOT NULL,
+      calendar_year SMALLINT NOT NULL,
+      calendar_semester SMALLINT NOT NULL,
+      fiscal_quarter SMALLINT NOT NULL,
+      fiscal_year SMALLINT NOT NULL,
+      fiscal_semester SMALLINT NOT NULL
+  );
+
+dim_currency: |
+  CREATE TABLE dim_currency (
+      currency_key SERIAL PRIMARY KEY,
+      currency_alternate_key CHAR(3) NOT NULL UNIQUE,
+      currency_name VARCHAR(50) NOT NULL
+  );
+
+dim_sales_territory: |
+  CREATE TABLE dim_sales_territory (
+      sales_territory_key SERIAL PRIMARY KEY,
+      sales_territory_alternate_key INTEGER UNIQUE,
+      sales_territory_region VARCHAR(50) NOT NULL,
+      sales_territory_country VARCHAR(50) NOT NULL,
+      sales_territory_group VARCHAR(50)
+  );
+
+dim_geography: |
+  CREATE TABLE dim_geography (
+      geography_key SERIAL PRIMARY KEY,
+      city VARCHAR(50),
+      state_province_code VARCHAR(10),
+      state_province_name VARCHAR(50),
+      country_region_code VARCHAR(10),
+      english_country_region_name VARCHAR(50),
+      postal_code VARCHAR(20),
+      sales_territory_key INTEGER REFERENCES dim_sales_territory(sales_territory_key)
+  );
+
+dim_product_category: |
+  CREATE TABLE dim_product_category (
+      product_category_key SERIAL PRIMARY KEY,
+      product_category_alternate_key INTEGER NOT NULL UNIQUE,
+      english_product_category_name VARCHAR(50) NOT NULL
+  );
+
+dim_product_subcategory: |
+  CREATE TABLE dim_product_subcategory (
+      product_subcategory_key SERIAL PRIMARY KEY,
+      product_subcategory_alternate_key INTEGER NOT NULL UNIQUE,
+      english_product_subcategory_name VARCHAR(50) NOT NULL,
+      product_category_key INTEGER REFERENCES dim_product_category(product_category_key)
+  );
+
+dim_product: |
+  CREATE TABLE dim_product (
+      product_key SERIAL PRIMARY KEY,
+      product_alternate_key VARCHAR(25) NOT NULL UNIQUE,
+      product_id_oltp INTEGER NOT NULL UNIQUE,
+      product_subcategory_key INTEGER REFERENCES dim_product_subcategory(product_subcategory_key),
+      weight_unit_measure_code VARCHAR(5),
+      size_unit_measure_code VARCHAR(5),
+      english_product_name VARCHAR(100) NOT NULL,
+      standard_cost NUMERIC(19, 4),
+      finished_goods_flag BOOLEAN NOT NULL,
+      color VARCHAR(20) NOT NULL,
+      safety_stock_level SMALLINT,
+      reorder_point SMALLINT,
+      list_price NUMERIC(19, 4),
+      size VARCHAR(10),
+      weight DOUBLE PRECISION,
+      days_to_manufacture INTEGER,
+      product_line VARCHAR(5),
+      class VARCHAR(5),
+      style VARCHAR(5),
+      model_name VARCHAR(50),
+      english_description TEXT,
+      start_date TIMESTAMP,
+      end_date TIMESTAMP,
+      status VARCHAR(20)
+  );
+
+dim_promotion: |
+  CREATE TABLE dim_promotion (
+      promotion_key SERIAL PRIMARY KEY,
+      promotion_alternate_key INTEGER NOT NULL UNIQUE,
+      english_promotion_name VARCHAR(255) NOT NULL,
+      discount_pct DOUBLE PRECISION NOT NULL,
+      english_promotion_type VARCHAR(50),
+      english_promotion_category VARCHAR(50),
+      start_date TIMESTAMP NOT NULL,
+      end_date TIMESTAMP,
+      min_qty INTEGER,
+      max_qty INTEGER
+  );
+
+dim_customer: |
+  CREATE TABLE dim_customer (
+      customer_key SERIAL PRIMARY KEY,
+      geography_key INTEGER REFERENCES dim_geography(geography_key),
+      customer_alternate_key VARCHAR(20) NOT NULL UNIQUE,
+      customer_id_oltp INTEGER NOT NULL UNIQUE,
+      title VARCHAR(10),
+      first_name VARCHAR(50),
+      middle_name VARCHAR(50),
+      last_name VARCHAR(50),
+      name_style BOOLEAN,
+      birth_date DATE,
+      marital_status VARCHAR(5),
+      suffix VARCHAR(10),
+      gender VARCHAR(5),
+      email_address VARCHAR(100),
+      yearly_income NUMERIC(19, 4),
+      yearly_income_range VARCHAR(30),
+      total_children SMALLINT,
+      number_children_at_home SMALLINT,
+      english_education VARCHAR(50),
+      english_occupation VARCHAR(50),
+      house_owner_flag CHAR(1),
+      number_cars_owned SMALLINT,
+      address_line1 VARCHAR(120),
+      address_line2 VARCHAR(120),
+      phone VARCHAR(30),
+      date_first_purchase DATE,
+      commute_distance VARCHAR(20)
+  );
+
+dim_reseller: |
+  CREATE TABLE dim_reseller (
+      reseller_key SERIAL PRIMARY KEY,
+      geography_key INTEGER REFERENCES dim_geography(geography_key),
+      reseller_alternate_key VARCHAR(20) NOT NULL UNIQUE,
+      store_id_oltp INTEGER NOT NULL UNIQUE,
+      phone VARCHAR(30),
+      business_type VARCHAR(30) NOT NULL,
+      reseller_name VARCHAR(100) NOT NULL,
+      number_employees INTEGER,
+      order_frequency CHAR(1),
+      order_month SMALLINT,
+      first_order_year INTEGER,
+      last_order_year INTEGER,
+      product_line VARCHAR(50),
+      address_line1 VARCHAR(120),
+      address_line2 VARCHAR(120),
+      annual_sales NUMERIC(19, 4),
+      bank_name VARCHAR(50),
+      annual_revenue NUMERIC(19, 4),
+      year_opened INTEGER
+  );
+
+dim_employee: |
+  CREATE TABLE dim_employee (
+      employee_key SERIAL PRIMARY KEY,
+      parent_employee_key INTEGER REFERENCES dim_employee(employee_key),
+      employee_national_id_alternate_key VARCHAR(20) NOT NULL UNIQUE,
+      parent_employee_national_id_alternate_key VARCHAR(20),
+      employee_id_oltp INTEGER NOT NULL UNIQUE,
+      sales_territory_key INTEGER REFERENCES dim_sales_territory(sales_territory_key),
+      first_name VARCHAR(50) NOT NULL,
+      last_name VARCHAR(50) NOT NULL,
+      middle_name VARCHAR(50),
+      name_style BOOLEAN NOT NULL,
+      title VARCHAR(50),
+      hire_date DATE,
+      birth_date DATE,
+      login_id VARCHAR(256),
+      email_address VARCHAR(100),
+      phone VARCHAR(30),
+      marital_status VARCHAR(5),
+      salaried_flag BOOLEAN,
+      gender VARCHAR(5),
+      pay_frequency SMALLINT,
+      base_rate NUMERIC(19, 4),
+      vacation_hours SMALLINT,
+      sick_leave_hours SMALLINT,
+      current_flag BOOLEAN NOT NULL,
+      sales_person_flag BOOLEAN NOT NULL,
+      department_name VARCHAR(50),
+      start_date DATE,
+      end_date DATE,
+      status VARCHAR(20)
+  );
+
+dim_sales_reason: |
+  CREATE TABLE dim_sales_reason (
+      sales_reason_key SERIAL PRIMARY KEY,
+      sales_reason_alternate_key INTEGER NOT NULL UNIQUE,
+      sales_reason_name VARCHAR(50) NOT NULL,
+      sales_reason_reason_type VARCHAR(50) NOT NULL
+  );
+
+fact_internet_sales: |
+  CREATE TABLE fact_internet_sales (
+      product_key INTEGER NOT NULL REFERENCES dim_product(product_key),
+      order_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      due_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      ship_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      customer_key INTEGER NOT NULL REFERENCES dim_customer(customer_key),
+      promotion_key INTEGER NOT NULL REFERENCES dim_promotion(promotion_key),
+      currency_key INTEGER NOT NULL REFERENCES dim_currency(currency_key),
+      sales_territory_key INTEGER NOT NULL REFERENCES dim_sales_territory(sales_territory_key),
+      sales_order_number VARCHAR(25) NOT NULL,
+      sales_order_line_number SMALLINT NOT NULL,
+      revision_number SMALLINT NOT NULL,
+      order_quantity SMALLINT NOT NULL,
+      unit_price NUMERIC(19, 4) NOT NULL,
+      extended_amount NUMERIC(19, 4) NOT NULL,
+      unit_price_discount_pct DOUBLE PRECISION NOT NULL,
+      discount_amount DOUBLE PRECISION NOT NULL,
+      product_standard_cost NUMERIC(19, 4) NOT NULL,
+      total_product_cost NUMERIC(19, 4) NOT NULL,
+      sales_amount NUMERIC(19, 4) NOT NULL,
+      tax_amt NUMERIC(19, 4) NOT NULL,
+      freight NUMERIC(19, 4) NOT NULL,
+      carrier_tracking_number VARCHAR(30),
+      customer_po_number VARCHAR(30),
+      order_date TIMESTAMP,
+      due_date TIMESTAMP,
+      ship_date TIMESTAMP,
+      PRIMARY KEY (sales_order_number, sales_order_line_number)
+  );
+
+fact_internet_sales_reason: |
+  CREATE TABLE fact_internet_sales_reason (
+      sales_order_number VARCHAR(25) NOT NULL,
+      sales_order_line_number SMALLINT NOT NULL,
+      sales_reason_key INTEGER NOT NULL REFERENCES dim_sales_reason(sales_reason_key),
+      PRIMARY KEY (sales_order_number, sales_order_line_number, sales_reason_key),
+      FOREIGN KEY (sales_order_number, sales_order_line_number)
+          REFERENCES fact_internet_sales(sales_order_number, sales_order_line_number)
+  );
+
+fact_reseller_sales: |
+  CREATE TABLE fact_reseller_sales (
+      product_key INTEGER NOT NULL REFERENCES dim_product(product_key),
+      order_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      due_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      ship_date_key INTEGER NOT NULL REFERENCES dim_date(date_key),
+      reseller_key INTEGER NOT NULL REFERENCES dim_reseller(reseller_key),
+      employee_key INTEGER NOT NULL REFERENCES dim_employee(employee_key),
+      promotion_key INTEGER NOT NULL REFERENCES dim_promotion(promotion_key),
+      currency_key INTEGER NOT NULL REFERENCES dim_currency(currency_key),
+      sales_territory_key INTEGER NOT NULL REFERENCES dim_sales_territory(sales_territory_key),
+      sales_order_number VARCHAR(25) NOT NULL,
+      sales_order_line_number SMALLINT NOT NULL,
+      revision_number SMALLINT NOT NULL,
+      order_quantity SMALLINT NOT NULL,
+      unit_price NUMERIC(19, 4) NOT NULL,
+      extended_amount NUMERIC(19, 4) NOT NULL,
+      unit_price_discount_pct DOUBLE PRECISION NOT NULL,
+      discount_amount DOUBLE PRECISION NOT NULL,
+      product_standard_cost NUMERIC(19, 4) NOT NULL,
+      total_product_cost NUMERIC(19, 4) NOT NULL,
+      sales_amount NUMERIC(19, 4) NOT NULL,
+      tax_amt NUMERIC(19, 4) NOT NULL,
+      freight NUMERIC(19, 4) NOT NULL,
+      carrier_tracking_number VARCHAR(30),
+      customer_po_number VARCHAR(30),
+      order_date TIMESTAMP,
+      due_date TIMESTAMP,
+      ship_date TIMESTAMP,
+      PRIMARY KEY (sales_order_number, sales_order_line_number)
+  );
+
+create_indexes: |
+  CREATE INDEX idx_fis_order_date ON fact_internet_sales(order_date_key);
+  CREATE INDEX idx_fis_product ON fact_internet_sales(product_key);
+  CREATE INDEX idx_fis_customer ON fact_internet_sales(customer_key);
+  CREATE INDEX idx_fis_territory ON fact_internet_sales(sales_territory_key);
+  CREATE INDEX idx_frs_order_date ON fact_reseller_sales(order_date_key);
+  CREATE INDEX idx_frs_product ON fact_reseller_sales(product_key);
+  CREATE INDEX idx_frs_reseller ON fact_reseller_sales(reseller_key);
+  CREATE INDEX idx_frs_employee ON fact_reseller_sales(employee_key);
+  CREATE INDEX idx_frs_territory ON fact_reseller_sales(sales_territory_key);
+
